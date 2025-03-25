@@ -58,7 +58,22 @@ def create_collection(name):
     return myCol
 
 
-def split_model_to_disks(target_model_name, step, axis='Z'):  
+def create_atlas(collection):
+    
+    x_factor = 0.45
+    y_factor = 0.85
+    num = len(collection.objects)
+    width = 15
+    height = math.ceil(num / width)
+    for y in range(height):
+        for x in range(width):
+            i = x + y * width
+            if i == num:
+                return
+            collection.objects[i].location = (x * x_factor, 0, y * y_factor)
+
+
+def split_model_to_disks(target_model_name, step, axis, do_create_atlas = False):  
     
     obj = bpy.data.objects.get(target_model_name)
     if not obj:
@@ -75,7 +90,7 @@ def split_model_to_disks(target_model_name, step, axis='Z'):
     min_bound = obj.location[axis_index] + min(v[axis_index] for v in obj.bound_box)
     max_bound = obj.location[axis_index] + max(v[axis_index] for v in obj.bound_box)
     length = max_bound - min_bound
-    iters = int(math.ceil(length / step))
+    iters = abs(int(math.ceil(length / step)))
     for i in range(iters):
         slice_positions.append(min_bound + i * step)
         
@@ -106,6 +121,9 @@ def split_model_to_disks(target_model_name, step, axis='Z'):
         
         bmesh.update_edit_mesh(new_obj.data)
         bpy.ops.object.mode_set(mode='OBJECT')
+    
+    if do_create_atlas:
+        create_atlas(collection)
 
 
-split_model_to_disks("Sphere", 0.1, axis='Z')
+split_model_to_disks("Sphere", 0.1, 'Y', True)
