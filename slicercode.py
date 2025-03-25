@@ -5,81 +5,28 @@ import math
 
 def fill_closed_loops(bm, edges):
     
-    old_edges_cache = []
-    
     for edge in edges:
         edge.select = True
-        old_edges_cache.append((edge.verts[0], edge.verts[1]))
-    
+
     bpy.ops.mesh.fill()
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     
-    for edge in bm.edges:
+    for edge in bm.edges: # deselect everything
         edge.select = False
-
-    new_edges = []
-    for edge in bm.edges:
-        for old_edge in old_edges_cache:
-            if not ((edge.verts[0] == old_edge[0] and edge.verts[1] == old_edge[1]) 
-            or (edge.verts[0] == old_edge[1] and edge.verts[1] == old_edge[0])):
-                # not same as before
-                new_edges.append(edge)
-    
-    old_edges = [e for e in edges]
-    return old_edges, new_edges
-    
-    """
-    Fills closed shapes formed by edges, treating them as independent rings and creating faces.
-    """
-    loops = []
-    visited_edges = set()
-
-    for edge in edges:
-        if edge not in visited_edges:
-            loop = [edge]
-            visited_edges.add(edge)
-
-            # Loop around the edges to find all connected edges
-            while True:
-                next_edge = None
-                for e in edges:
-                    if e not in visited_edges:
-                        if any([v in edge.verts for v in e.verts]):
-                            next_edge = e
-                            visited_edges.add(e)
-                            break
-                if next_edge:
-                    loop.append(next_edge)
-                    edge = next_edge
-                else:
-                    break
-
-            loops.append(loop)
-
-    # Create faces from each loop
-    for loop in loops:
-        bmesh.ops.edgeloop_fill(bm, edges=loop)
             
 
 def make_disk(bm, edges, direction):
     
     input_edges = [e for e in edges]
     
-    old, new = fill_closed_loops(bm, edges[:])
-    print(len(old))
+    fill_closed_loops(bm, edges[:])
     
     extrude_result = bmesh.ops.extrude_edge_only(bm, edges=input_edges)
     
     new_verts = [v for v in extrude_result["geom"] if isinstance(v, bmesh.types.BMVert)]
     new_edges = [e for e in extrude_result["geom"] if isinstance(e, bmesh.types.BMEdge)]
-    #new_edges = [e for e in edges if e not in input_edges]
     bmesh.ops.translate(bm, vec=direction, verts=new_verts)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    
-    #for e in edges[:]:
-    #    e.verts[0].co.z += 0.01
-    
-    #return
     fill_closed_loops(bm, new_edges)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 
@@ -170,4 +117,4 @@ def split_model_to_disks(target_model_name, step, axis, do_create_atlas = False)
         create_atlas(collection, axis)
 
 
-split_model_to_disks("Sphere", 0.1, 'Y', False)
+split_model_to_disks("Sphere", 0.1, 'Z', False)
