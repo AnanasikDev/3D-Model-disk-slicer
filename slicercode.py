@@ -14,6 +14,17 @@ def make_disk(bm, edges, direction):
     bmesh.ops.edgeloop_fill(bm, edges=new_edges[:])
 
 
+def create_collection(name):
+    for myCol in bpy.data.collections:
+        if myCol.name == name:
+            for obj in myCol.objects:
+                bpy.data.objects.remove(obj, do_unlink=True)
+            return myCol
+    myCol = bpy.data.collections.new(name)
+    bpy.context.scene.collection.children.link(myCol) #Creates a new collection
+    return myCol
+
+
 def split_model_to_disks(target_model_name, step, axis='Z'):  
     
     obj = bpy.data.objects.get(target_model_name)
@@ -34,11 +45,14 @@ def split_model_to_disks(target_model_name, step, axis='Z'):
     iters = int(math.ceil(length / step))
     for i in range(iters):
         slice_positions.append(min_bound + i * step)
+        
+    collection = create_collection("Disks")
     
-    for position in slice_positions:
-        obj.select_set(True)
-        bpy.ops.object.duplicate()
-        new_obj = bpy.context.selected_objects[0]
+    for i, position in enumerate(slice_positions):
+        new_obj = obj.copy()
+        new_obj.data = obj.data.copy()
+        collection.objects.link(new_obj)
+        new_obj.name = f"{obj.name}-({i})"
         
         bpy.context.view_layer.objects.active = new_obj
         bpy.ops.object.mode_set(mode='EDIT')
@@ -59,8 +73,6 @@ def split_model_to_disks(target_model_name, step, axis='Z'):
         
         bmesh.update_edit_mesh(new_obj.data)
         bpy.ops.object.mode_set(mode='OBJECT')
-    
-    print("Model bisected at specified positions")
 
 
 split_model_to_disks("Sphere", 0.1, axis='Y')
