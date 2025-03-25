@@ -3,15 +3,48 @@ import bmesh
 from mathutils import Vector
 import math
 
+def fill_closed_loops(bm, edges):
+    """
+    Fills closed shapes formed by edges, treating them as independent rings and creating faces.
+    """
+    loops = []
+    visited_edges = set()
+
+    for edge in edges:
+        if edge not in visited_edges:
+            loop = [edge]
+            visited_edges.add(edge)
+
+            # Loop around the edges to find all connected edges
+            while True:
+                next_edge = None
+                for e in edges:
+                    if e not in visited_edges:
+                        if any([v in edge.verts for v in e.verts]):
+                            next_edge = e
+                            visited_edges.add(e)
+                            break
+                if next_edge:
+                    loop.append(next_edge)
+                    edge = next_edge
+                else:
+                    break
+
+            loops.append(loop)
+
+    # Create faces from each loop
+    for loop in loops:
+        bmesh.ops.edgeloop_fill(bm, edges=loop)
+            
+
 def make_disk(bm, edges, direction):
-    bmesh.ops.edgeloop_fill(bm, edges=edges[:])
+    fill_closed_loops(bm, edges[:])
     extrude_result = bmesh.ops.extrude_edge_only(bm, edges=edges)
     new_verts = [v for v in extrude_result["geom"] if isinstance(v, bmesh.types.BMVert)]
     new_edges = [e for e in extrude_result["geom"] if isinstance(e, bmesh.types.BMEdge)]
     bmesh.ops.translate(bm, vec=direction, verts=new_verts)
-    bmesh.ops.bridge_loops(bm, edges=new_edges[:])
+    fill_closed_loops(bm, new_edges)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bmesh.ops.edgeloop_fill(bm, edges=new_edges[:])
 
 
 def create_collection(name):
@@ -21,7 +54,7 @@ def create_collection(name):
                 bpy.data.objects.remove(obj, do_unlink=True)
             return myCol
     myCol = bpy.data.collections.new(name)
-    bpy.context.scene.collection.children.link(myCol) #Creates a new collection
+    bpy.context.scene.collection.children.link(myCol)
     return myCol
 
 
@@ -75,4 +108,4 @@ def split_model_to_disks(target_model_name, step, axis='Z'):
         bpy.ops.object.mode_set(mode='OBJECT')
 
 
-split_model_to_disks("Sphere", 0.1, axis='Y')
+split_model_to_disks("Sphere", 0.1, axis='Z')
