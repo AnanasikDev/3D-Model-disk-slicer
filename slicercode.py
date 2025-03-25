@@ -4,6 +4,30 @@ from mathutils import Vector
 import math
 
 def fill_closed_loops(bm, edges):
+    
+    old_edges_cache = []
+    
+    for edge in edges:
+        edge.select = True
+        old_edges_cache.append((edge.verts[0], edge.verts[1]))
+    
+    bpy.ops.mesh.fill()
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    
+    for edge in bm.edges:
+        edge.select = False
+
+    new_edges = []
+    for edge in bm.edges:
+        for old_edge in old_edges_cache:
+            if not ((edge.verts[0] == old_edge[0] and edge.verts[1] == old_edge[1]) 
+            or (edge.verts[0] == old_edge[1] and edge.verts[1] == old_edge[0])):
+                # not same as before
+                new_edges.append(edge)
+    
+    old_edges = [e for e in edges]
+    return old_edges, new_edges
+    
     """
     Fills closed shapes formed by edges, treating them as independent rings and creating faces.
     """
@@ -38,11 +62,24 @@ def fill_closed_loops(bm, edges):
             
 
 def make_disk(bm, edges, direction):
-    fill_closed_loops(bm, edges[:])
-    extrude_result = bmesh.ops.extrude_edge_only(bm, edges=edges)
+    
+    input_edges = [e for e in edges]
+    
+    old, new = fill_closed_loops(bm, edges[:])
+    print(len(old))
+    
+    extrude_result = bmesh.ops.extrude_edge_only(bm, edges=input_edges)
+    
     new_verts = [v for v in extrude_result["geom"] if isinstance(v, bmesh.types.BMVert)]
     new_edges = [e for e in extrude_result["geom"] if isinstance(e, bmesh.types.BMEdge)]
+    #new_edges = [e for e in edges if e not in input_edges]
     bmesh.ops.translate(bm, vec=direction, verts=new_verts)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    
+    #for e in edges[:]:
+    #    e.verts[0].co.z += 0.01
+    
+    #return
     fill_closed_loops(bm, new_edges)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 
@@ -58,7 +95,14 @@ def create_collection(name):
     return myCol
 
 
-def create_atlas(collection):
+def create_atlas(collection, axis):
+    def create_pos(a, b, axis):
+        if axis == "X":
+            return (0, a, b)
+        if axis == "Y":
+            return (a, 0, b)
+        if axis == "Z":
+            return (a, b, 0)
     
     x_factor = 0.45
     y_factor = 0.85
@@ -70,7 +114,7 @@ def create_atlas(collection):
             i = x + y * width
             if i == num:
                 return
-            collection.objects[i].location = (x * x_factor, 0, y * y_factor)
+            collection.objects[i].location = create_pos(x * x_factor, y * y_factor, axis)
 
 
 def split_model_to_disks(target_model_name, step, axis, do_create_atlas = False):  
@@ -123,7 +167,7 @@ def split_model_to_disks(target_model_name, step, axis, do_create_atlas = False)
         bpy.ops.object.mode_set(mode='OBJECT')
     
     if do_create_atlas:
-        create_atlas(collection)
+        create_atlas(collection, axis)
 
 
-split_model_to_disks("Sphere", 0.1, 'Y', True)
+split_model_to_disks("Sphere", 0.1, 'Y', False)
