@@ -12,7 +12,7 @@ Copy python script `slicercode.py` to text editor in Blender. The only* line of 
 
 *: unless you also want to control atlas settings, they are only set inside the `create_atlas` function
 
-The `Disks` collection must be selected (it will be created automatically on first call) and you must be in Object mode in order for the script to run properly.
+The `Disks` collection must be visible (it will be created automatically on first call) and you must be in Object mode in order for the script to run properly.
 
 Note that all objects in the `Disks` collections are temporary and will be deleted automatically next time the script is run. Each time all objects in this collections are flushed and replaced with new ones.
 
